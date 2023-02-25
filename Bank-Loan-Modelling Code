@@ -1,0 +1,99 @@
+install.packages("xlsx")
+library("xlsx")
+dataset<-read.xlsx("Bank_Personal_Loan_Modelling.xlsx",sheetIndex =2)
+attach(dataset)
+head(dataset)
+boxplot(Experience)
+summary(Experience)
+myvar<-c('Age','Income','CCAvg','Experience','Family','Education','Mortgage')
+chart<-c('Age','Experience')
+sapply(dataset[myvar],mean)
+sapply(dataset[myvar],median)
+sapply(dataset[myvar],min)
+sapply(dataset[myvar],max)
+table<-sapply(dataset[myvar],mean)
+barplot(table,main="Average",col="red")
+table_1<-sapply(dataset[chart],mean)
+barplot(table_1,main="Average",col="red")
+summary(dataset)
+
+#Graphs
+plot(Income,CCAvg,col="red",pch=2, cex=0.5)
+hist(dataset$Income)
+boxplot(Income~PersonalLoan)
+
+#Chi Squared tests
+ch<-chisq.test(Family,PersonalLoan)
+ch
+
+# Correlation
+cor.test(CCAvg,Income)
+cor(dataset)
+
+#Anova 
+# 1 Way ANOVA
+anova<-aov(Income~Education)
+summary(anova)
+
+#2 Way ANOVA
+anova2 <-aov(Income~Family*Education)
+summary(anova2)
+
+#ANCOVA
+ancova<-aov(CCAvg~Income+Education)
+summary(ancova)
+
+#Linear Regression
+linearregr<-lm(CCAvg~Income)
+summary(linearregr)
+plot(linearregr)
+
+
+#Logical Regression 
+logicalreg<-glm(PersonalLoan~Age+Experience+Income+Family+CCAvg+Education+Mortgage)
+summary(logicalreg)
+install.packages("caTools")
+install.packages("ROCR")
+library(caTools)
+library(ROCR) 
+
+# Splitting dataset
+split <- sample.split(dataset$PersonalLoan, SplitRatio = 0.8)
+train_reg <- subset(dataset, split == "TRUE")
+test_reg <- subset(dataset, split == "FALSE")
+
+# Training model
+logistic_model <- glm(PersonalLoan~Age+Experience+Income+Family+CCAvg+Education+Mortgage,data = train_reg, family = "binomial")
+
+# Summary
+summary(logistic_model)
+
+# Predict test data based on model
+predict_reg <- predict(logistic_model,test_reg, type = "response")
+
+# Changing probabilities
+predict_reg <- ifelse(predict_reg >0.5, 1, 0)
+
+# Evaluating model accuracy using confusion matrix
+table(test_reg$PersonalLoan, predict_reg)
+missing_classerr <- mean(predict_reg != test_reg$PersonalLoan)
+print(paste('Accuracy =', 1 - missing_classerr))
+ROCPred <- prediction(predict_reg, test_reg$PersonalLoan) 
+ROCPer <- performance(ROCPred, measure = "tpr",x.measure = "fpr")
+auc <- performance(ROCPred, measure = "auc")
+auc <- auc@y.values[[1]]
+
+# Plotting curve
+plot(ROCPer)
+plot(ROCPer, colorize = TRUE, print.cutoffs.at = seq(0.1, by = 0.1), main = "ROC CURVE")
+abline(a = 0, b = 1)
+auc <- round(auc, 4)
+legend(.6, .5, auc, title = "AUC", cex = 1)
+
+plot(Income,CCAvg, pch = 19, col = "lightblue")
+
+# Regression line
+abline(lm(CCAvg ~ Income), col = "red", lwd = 3)
+
+# Pearson correlation
+text(paste("Correlation:", round(cor(Income,CCAvg), 2)), x = 25, y = 95)
